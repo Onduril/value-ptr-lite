@@ -11,6 +11,7 @@ project( examples )
 set( TARGETS
     01-pimpl
     02-tree
+    03-clone_ptr
 )
 
 foreach( name ${TARGETS} )
@@ -21,7 +22,7 @@ endforeach()
 
 if( CMAKE_CXX_COMPILER_ID MATCHES MSVC )
     foreach( name ${TARGETS} )
-        target_compile_options( ${name} PUBLIC -W3 -EHsc )
+        target_compile_options( ${name} PUBLIC -W3 -EHsc -std:c++17)
     endforeach()
 else()
     foreach( name ${TARGETS} )
