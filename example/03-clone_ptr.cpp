@@ -50,6 +50,7 @@ namespace core
     struct ClassWithFwdPtr
     {
         core::clone_ptr<FwdDeclare> ps;
+        static_assert(sizeof(ps)==sizeof(FwdDeclare*));
     };
 
     struct RawClonable
@@ -70,6 +71,7 @@ namespace core
     {
         C c;
         core::clone_ptr<C> ps(c);
+        static_assert(sizeof(ps) == sizeof(C*));
         auto ps2 = std::move(ps);
         assert(!ps);
         auto ps3 = ps2;
@@ -77,6 +79,12 @@ namespace core
         assert(ps3->i == 0);
         decltype(ps) ps4;
         ps4 = ps;
+    }
+
+    void testUniquePtr()
+    {
+        core::clone_ptr<RawClonable> ps;
+        ps = std::unique_ptr<RawClonable>();
     }
 
     void test()

@@ -323,8 +323,10 @@ struct nsvp_DECLSPEC_EMPTY_BASES compressed_ptr : Cloner, Deleter
 
     ~compressed_ptr()
     {
-        deleter_type()( ptr );
+        get_deleter()( ptr );
     }
+
+    compressed_ptr & operator=(compressed_ptr const &) = delete; // remove deprecated
 
     compressed_ptr() nsvp_noexcept
     : ptr( nsvp_nullptr )
@@ -334,10 +336,20 @@ struct nsvp_DECLSPEC_EMPTY_BASES compressed_ptr : Cloner, Deleter
     : ptr( p )
     {}
 
+    compressed_ptr( pointer p, deleter_type const & deleter ) nsvp_noexcept
+        : deleter_type( deleter )
+        , ptr( p )
+    {}
+
+    compressed_ptr( pointer p, deleter_type && deleter ) nsvp_noexcept
+        : deleter_type( std::move( deleter ) )
+        , ptr( p )
+    {}
+
     compressed_ptr( compressed_ptr const & other )
     : cloner_type ( other )
     , deleter_type( other )
-    , ptr( other.ptr ? cloner_type()( *other.ptr ) : nsvp_nullptr )
+    , ptr( other.ptr ? get_cloner()( *other.ptr ) : nsvp_nullptr )
     {}
 
 #if  nsvp_CPP11_OR_GREATER
@@ -351,50 +363,50 @@ struct nsvp_DECLSPEC_EMPTY_BASES compressed_ptr : Cloner, Deleter
 #endif
 
     compressed_ptr( element_type const & value )
-    : ptr( cloner_type()( value ) )
+    : ptr( get_cloner()( value ) )
     {}
 
 #if  nsvp_CPP11_OR_GREATER
 
     compressed_ptr( element_type && value ) nsvp_noexcept
-    : ptr( cloner_type()( std::move( value ) ) )
+    : ptr(get_cloner()( std::move( value ) ) )
     {}
 
     template< class... Args >
     explicit compressed_ptr( nonstd_lite_in_place_type_t(T), Args&&... args )
-    : ptr( cloner_type()( in_place, std::forward<Args>(args)...) )
+    : ptr( get_cloner()( in_place, std::forward<Args>(args)...) )
     {}
 
     template< class U, class... Args >
     explicit compressed_ptr( nonstd_lite_in_place_type_t(T), std::initializer_list<U> il, Args&&... args )
-    : ptr( cloner_type()( in_place, il, std::forward<Args>(args)...) )
+    : ptr( get_cloner()( in_place, il, std::forward<Args>(args)...) )
     {}
 
 #endif
 
     compressed_ptr( element_type const & value, cloner_type const & cloner )
     : cloner_type ( cloner  )
-    , ptr( cloner_type()( value ) )
+    , ptr( get_cloner()( value ) )
     {}
 
 #if  nsvp_CPP11_OR_GREATER
     compressed_ptr( element_type && value, cloner_type && cloner ) nsvp_noexcept
     : cloner_type ( std::move( cloner  ) )
-    , ptr( cloner_type()( std::move( value ) ) )
+    , ptr( get_cloner()( std::move( value ) ) )
     {}
 #endif
 
     compressed_ptr( element_type const & value, cloner_type const & cloner, deleter_type const & deleter )
     : cloner_type ( cloner  )
     , deleter_type( deleter )
-    , ptr( cloner_type()( value ) )
+    , ptr( get_cloner()( value ) )
     {}
 
 #if  nsvp_CPP11_OR_GREATER
     compressed_ptr( element_type && value, cloner_type && cloner, deleter_type && deleter ) nsvp_noexcept
     : cloner_type ( std::move( cloner  ) )
     , deleter_type( std::move( deleter ) )
-    , ptr( cloner_type()( std::move( value ) ) )
+    , ptr( get_cloner()( std::move( value ) ) )
     {}
 #endif
 
@@ -485,6 +497,8 @@ struct nsvp_DECLSPEC_EMPTY_BASES compressed_ptr : Cloner, Deleter
     {
         using std::swap;
         swap( ptr, other.ptr );
+        swap(get_deleter(), other.get_deleter());
+        swap(get_cloner(), other.get_cloner());
     }
 
     pointer ptr;
@@ -542,6 +556,11 @@ public:
     value_ptr( pointer p ) nsvp_noexcept
     : ptr( p )
     {}
+
+    value_ptr( std::unique_ptr<element_type, deleter_type> p ) nsvp_noexcept
+        : ptr( p.release(), std::move(p.get_deleter()) )
+    {}
+
 
     value_ptr( value_ptr const & other )
     : ptr( other.ptr )
@@ -626,6 +645,15 @@ public:
         return *this;
     }
 #endif
+    value_ptr & operator=(std::unique_ptr<element_type, deleter_type> p) nsvp_noexcept
+    
+        : ptr(p.release(), std::move(p.get_deleter()))
+    {
+        ptr.reset(nullptr);
+        ptr = 
+        return *this;
+    }
+
 
     value_ptr & operator=( T const & value )
     {
